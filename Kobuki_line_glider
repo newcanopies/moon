@@ -11,13 +11,13 @@ from sensor_msgs.msg import Image
 
 
 
-class LineGlider(object):
+class LineFollower(object):
 
     def __init__(self):
     
         self.bridge_object = CvBridge()
         self.image_sub = rospy.Subscriber("/camera/rgb/image_raw", Image, self.camera_callback)
-        self.kobuki_glide = rospy.Publisher("/cmd_vel", Twist, queue_size= 1)
+        self.move_robot = rospy.Publisher("/cmd_vel", Twist, queue_size= 1)
         self.motionv = Twist()  
 
     def camera_callback(self,data):
@@ -111,27 +111,31 @@ class LineGlider(object):
         # centering treshold
         tresh_hold = 20
 
+        error_x = cx - width / 2;
+        
         # kobuki line-searching turn
         if not ImageMoment_is:
             self.motionv.linear.x = 0.0
-            self.motionv.angular.z = -0.1
+            self.motionv.angular.z = (-error_x / 100)
 
         # kobuki left turn
         elif cx < (width/2) - tresh_hold:
             self.motionv.linear.x = 0.0
-            self.motionv.angular.z = -0.1
+            self.motionv.angular.z = -(-error_x / 100)
         # kobuki right turn 
         elif cx > (width/2) + tresh_hold:
             self.motionv.linear.x = 0.0
-            self.motionv.angular.z = +0.1
+            self.motionv.angular.z = +(-error_x / 100)
         # kobuki motion vector straight
         else: 
-            self.motionv.linear.x = 0.6
+            self.motionv.linear.x = 0.5
             self.motionv.angular.z = 0.0
             # self.motionv based on width, cx 
             # start kobuki motion vector 
-            self.kobuki_glide.publish(self.motionv)
-            rospy.loginfo("Kobuki glide along Yellow linen is: " +str(ImageMoment_is))
+            self.move_robot.publish(self.motionv)
+            rospy.loginfo("Kobuki glide along Yellow line is: " +str(ImageMoment_is))
+
+        
         
         cv2.imshow("HSV", hsv)
         cv2.imshow("MASK", mask)
@@ -140,7 +144,7 @@ class LineGlider(object):
 
 
 def main():
-    line_follower_object = LineGlider()
+    line_follower_object = LineFollower()
     rospy.init_node('line_following_node', anonymous=True)
     try:
         rospy.spin()
